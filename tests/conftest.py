@@ -11,7 +11,7 @@ from click_odoo import odoo, odoo_bin
 # This hack is necessary because the way CliRunner patches
 # stdout is not compatible with the Odoo logging initialization
 # mechanism. Logging is therefore tested with subprocesses.
-odoo.netsvc._logger_init = True
+odoo.netsvc.init_logger = lambda: None
 
 
 def _init_odoo_db(dbname, test_addons_dir=None):
@@ -25,6 +25,7 @@ def _init_odoo_db(dbname, test_addons_dir=None):
         ]
         cmd.append("--addons-path")
         cmd.append(",".join(addons_path))
+    print(cmd)
     subprocess.check_call(cmd)
 
 
@@ -55,12 +56,10 @@ def odoocfg(request, tmpdir):
     odoo_cfg = tmpdir / "odoo.cfg"
     odoo_cfg.write(
         textwrap.dedent(
-            """\
-        [options]
-        addons_path = {}
-    """.format(
-                ",".join(addons_path)
-            )
+            f"""\
+            [options]
+            addons_path = {",".join(addons_path)}
+            """
         )
     )
     yield odoo_cfg

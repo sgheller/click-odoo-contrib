@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2018 ACSONE SA/NV (<http://acsone.eu>)
+# Copyright 2024 Michael Tietz (MT Software) <mtietz@mt-software.de>
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl.html).
 
 import json
@@ -25,7 +26,7 @@ _logger = logging.getLogger(__name__)
 
 PARAM_INSTALLED_CHECKSUMS = "module_auto_update.installed_checksums"
 PARAM_EXCLUDE_PATTERNS = "module_auto_update.exclude_patterns"
-DEFAULT_EXCLUDE_PATTERNS = "*.pyc,*.pyo,i18n/*.pot,i18n_extra/*.pot,static/*"
+DEFAULT_EXCLUDE_PATTERNS = "*.pyc,*.pyo,i18n/*.pot,i18n_extra/*.pot,static/*,tests/*"
 
 
 class DbLockWatcher(threading.Thread):
@@ -133,10 +134,16 @@ def _get_param(cr, key, default=None):
 
 
 def _set_param(cr, key, value):
-    cr.execute("UPDATE ir_config_parameter SET value=%s WHERE key=%s", (value, key))
+    cr.execute(
+        "UPDATE ir_config_parameter SET value=%s, write_date=now() AT TIME ZONE 'UTC' "
+        "WHERE key=%s",
+        (value, key),
+    )
     if not cr.rowcount:
         cr.execute(
-            "INSERT INTO ir_config_parameter (key, value) VALUES (%s, %s)", (key, value)
+            "INSERT INTO ir_config_parameter (key, value, create_date, write_date) "
+            "VALUES (%s, %s, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')",
+            (key, value),
         )
 
 
@@ -174,6 +181,25 @@ def _get_checksum_dir(cr, module_name):
     return checksum_dir
 
 
+def _get_modules_to_update(cr, ignore_addons=None):
+    if ignore_addons is None:
+        ignore_addons = []
+    modules_to_update = []
+    checksums = _load_installed_checksums(cr)
+    cr.execute(
+        "SELECT name FROM ir_module_module WHERE state in ('installed', 'to upgrade')"
+    )
+    for (module_name,) in cr.fetchall():
+        if not _is_installable(module_name):
+            # if the module is not installable, do not try to update it
+            continue
+        if module_name in ignore_addons:
+            continue
+        if _get_checksum_dir(cr, module_name) != checksums.get(module_name):
+            modules_to_update.append(module_name)
+    return modules_to_update
+
+
 def _is_installable(module_name):
     try:
         if odoo.release.version_info < (16, 0):
@@ -203,19 +229,8 @@ def _update_db_nolock(
         to_update["base"] = 1
     else:
         with conn.cursor() as cr:
-            checksums = _load_installed_checksums(cr)
-            cr.execute(
-                "SELECT name FROM ir_module_module "
-                "WHERE state in ('installed', 'to upgrade')"
-            )
-            for (module_name,) in cr.fetchall():
-                if not _is_installable(module_name):
-                    # if the module is not installable, do not try to update it
-                    continue
-                if module_name in ignore_addons:
-                    continue
-                if _get_checksum_dir(cr, module_name) != checksums.get(module_name):
-                    to_update[module_name] = 1
+            for module_name in _get_modules_to_update(cr, ignore_addons):
+                to_update[module_name] = 1
         if to_update:
             _logger.info(
                 "Updating addons for their hash changed: %s.",
@@ -224,6 +239,9 @@ def _update_db_nolock(
     if list_only:
         odoo.tools.config["update"] = {}
         _logger.info("List-only selected, update is not performed.")
+        return
+    if not to_update:
+        _logger.info("No module needs updating, update is not performed.")
         return
     if i18n_overwrite:
         odoo.tools.config["overwrite_existing_translations"] = True
@@ -246,9 +264,17 @@ def _update_db(
     watcher=None,
     list_only=False,
     ignore_addons=None,
+    only_compute_hashes=False,
 ):
     conn = odoo.sql_db.db_connect(database)
     with conn.cursor() as cr, advisory_lock(cr, "click-odoo-update/" + database):
+        if only_compute_hashes:
+            _save_installed_checksums(cr, ignore_addons)
+            _logger.info(
+                "Only computed and stored module hashes, update is not performed."
+            )
+            return
+
         _update_db_nolock(
             conn,
             database,
@@ -260,6 +286,15 @@ def _update_db(
         )
 
 
+def _get_ignore_addons(ignore_addons_str=None, ignore_core_addons=None):
+    ignore_addons = set()
+    if ignore_addons_str:
+        ignore_addons.update(ignore_addons_str.strip().split(","))
+    if ignore_core_addons:
+        ignore_addons.update(get_core_addons(OdooSeries(odoo.release.series)))
+    return ignore_addons
+
+
 @contextmanager
 def OdooEnvironmentWithUpdate(database, ctx, **kwargs):
     # Watch for database locks while Odoo updates
@@ -267,11 +302,9 @@ def OdooEnvironmentWithUpdate(database, ctx, **kwargs):
     if ctx.params["watcher_max_seconds"] > 0:
         watcher = DbLockWatcher(database, ctx.params["watcher_max_seconds"])
         watcher.start()
-    ignore_addons = set()
-    if ctx.params["ignore_addons"]:
-        ignore_addons.update(ctx.params["ignore_addons"].strip().split(","))
-    if ctx.params["ignore_core_addons"]:
-        ignore_addons.update(get_core_addons(OdooSeries(odoo.release.series)))
+    ignore_addons = _get_ignore_addons(
+        ctx.params["ignore_addons"], ctx.params["ignore_core_addons"]
+    )
     if ignore_addons and ctx.params["update_all"]:
         raise click.ClickException(
             "--update-all and --ignore(-core)-addons cannot be used together"
@@ -285,6 +318,7 @@ def OdooEnvironmentWithUpdate(database, ctx, **kwargs):
             watcher,
             ctx.params["list_only"],
             ignore_addons,
+            ctx.params["only_compute_hashes"],
         )
     finally:
         if watcher:
@@ -336,6 +370,15 @@ def OdooEnvironmentWithUpdate(database, ctx, **kwargs):
     is_flag=True,
     help="Log the list of addons to update without actually updating them.",
 )
+@click.option(
+    "--only-compute-hashes",
+    is_flag=True,
+    help=(
+        "Initialise hash values of installed addons. "
+        "Use this when you are sure all your addons are up-to-date "
+        "and you don't want to run `click-odoo-update --update-all`."
+    ),
+)
 def main(
     env,
     i18n_overwrite,
@@ -345,6 +388,7 @@ def main(
     list_only,
     ignore_addons,
     ignore_core_addons,
+    only_compute_hashes,
 ):
     """Update an Odoo database (odoo -u), automatically detecting
     addons to update based on a hash of their file content, compared

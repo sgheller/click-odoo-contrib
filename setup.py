@@ -40,16 +40,17 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Framework :: Odoo",
     ],
     entry_points="""
         [console_scripts]
         click-odoo-uninstall=click_odoo_contrib.uninstall:main
-        click-odoo-upgrade=click_odoo_contrib.upgrade:main
         click-odoo-update=click_odoo_contrib.update:main
         click-odoo-copydb=click_odoo_contrib.copydb:main
         click-odoo-dropdb=click_odoo_contrib.dropdb:main
         click-odoo-initdb=click_odoo_contrib.initdb:main
+        click-odoo-listdb=click_odoo_contrib.listdb:main
         click-odoo-backupdb=click_odoo_contrib.backupdb:main
         click-odoo-restoredb=click_odoo_contrib.restoredb:main
         click-odoo-makepot=click_odoo_contrib.makepot:main

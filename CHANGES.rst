@@ -3,6 +3,51 @@ Changes
 
 .. towncrier release notes start
 
+1.20 (2024-10-23)
+-----------------
+
+**Features**
+
+- Odoo 18 compatibility (`#150
+  <https://github.com/acsone/click-odoo-contrib/pull/150>`_, `#152
+  <https://github.com/acsone/click-odoo-contrib/pull/152>`_, `#154
+  <https://github.com/acsone/click-odoo-contrib/pull/154>`_)
+
+1.19 (2024-07-22)
+-----------------
+
+**Features**
+
+- click-odoo-restoredb: Add ``--neutralize`` option. This works only in odoo 16.0 and above. (`#143 <https://github.com/acsone/click-odoo-contrib/issues/143>`_)
+
+
+1.18.1 (2023-11-16)
+-------------------
+
+**Features**
+
+- click-odoo-update : Do not run/update Odoo when no module needs updating. (`#144 <https://github.com/acsone/click-odoo-contrib/issues/144>`_)
+
+
+1.18.0 (2023-10-29)
+-------------------
+
+**Features**
+
+- Support Odoo 17. (`#190 <https://github.com/acsone/click-odoo-contrib/issues/190>`_)
+
+
+1.17.0 (2023-09-03)
+-------------------
+
+**Features**
+
+- New ``click-odoo-listdb`` command. (`#126 <https://github.com/acsone/click-odoo-contrib/issues/126>`_)
+- ``click-odoo-update``: exclude the ``tests/`` directory from checksum computation
+  A modification in tests alone should not require a database upgrade. (`#125 <https://github.com/acsone/click-odoo-contrib/issues/125>`_)
+- ``click-odoo-update``: set ``create_date`` and ``write_date`` on the ``ir_config_parameter`` checksums record (`#128 <https://github.com/acsone/click-odoo-contrib/issues/128>`_)
+
+
 1.16.0 (2022-09-21)
 -------------------
 

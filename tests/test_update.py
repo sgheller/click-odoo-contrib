@@ -10,7 +10,10 @@ import pytest
 from click.testing import CliRunner
 from click_odoo import OdooEnvironment, odoo, odoo_bin
 
-from click_odoo_contrib.update import _load_installed_checksums, main
+from click_odoo_contrib.update import (
+    _load_installed_checksums,
+    main,
+)
 
 # this extends the addons path of the odoodb and odoocfg fixtures
 # we use the v1 dir, so the first install work (since it's only since version 12
@@ -54,7 +57,7 @@ def _install_one(odoodb, v):
     cmd = [
         odoo_bin,
         "--addons-path",
-        _addons_path("v1"),
+        _addons_path(v),
         "-d",
         odoodb,
         "-i",

@@ -166,6 +166,11 @@ click-odoo-restoredb (beta)
                        exists. If force and destination database exists, it will
                        be dropped before restore.  [default: False]
 
+    --neutralize       Neutralize the database after restore. This will disable
+                       scheduled actions, outgoing emails, and sets other
+                       external providers in test mode. This works only in odoo
+                       16.0 and above.
+
     --jobs INTEGER     Uses this many parallel jobs to restore. Only used to
                        restore folder format backup.
 
@@ -210,6 +215,26 @@ click-odoo-makepot (stable)
     --commit / --no-commit      Git commit exported .pot files if needed.
                                 [default: False]
     --help                      Show this message and exit.
+
+click-odoo-listdb (beta)
+------------------------
+
+.. code::
+
+  Usage: click-odoo-listdb [OPTIONS]
+
+    List Odoo databases.
+
+  Options:
+    -c, --config FILE  Specify the Odoo configuration file. Other ways to
+                      provide it are with the ODOO_RC or OPENERP_SERVER
+                      environment variables, or ~/.odoorc (Odoo >= 10) or
+                      ~/.openerp_serverrc.
+    --log-level TEXT   Specify the logging level. Accepted values depend on the
+                      Odoo version, and include debug, info, warn, error.
+                      [default: warn]
+    --logfile FILE     Specify the log file.
+    --help             Show this message and exit.
 
 click-odoo-uninstall (stable)
 -----------------------------
@@ -269,6 +294,9 @@ click-odoo-update (stable)
                                  update process. Default: 0 (disabled).
     --list-only                  Log the list of addons to update without
                                  actually updating them.
+    --only-compute-hashes        Initialise hash values of installed addons.
+                                 Use this when you are sure all your addons are up-to-date
+                                 and you don't want to run `click-odoo-update --update-all`.
     --help                       Show this message and exit.
 
 Useful links
@@ -287,12 +315,12 @@ To run tests, type ``tox``. Tests are made using pytest. To run tests matching
 a specific keyword for, say, Odoo 12 and python 3.6, use
 ``tox -e py36-12.0 -- -k keyword``. For running tests you need a postgres server accessible for your user without a password at ``/var/run/postgresql/.s.PGSQL.5432``.
 
-This project uses `black <https://github.com/ambv/black>`_
-as code formatting convention, as well as isort and flake8.
 To make sure local coding convention are respected before
 you commit, install
 `pre-commit <https://github.com/pre-commit/pre-commit>`_ and
 run ``pre-commit install`` after cloning the repository.
+
+To release, create a tagged release on GitHub. This will trigger publishing to PyPI.
 
 Credits
 ~~~~~~~
@@ -302,10 +330,11 @@ Contributors:
 - Stéphane Bidoul (ACSONE_)
 - Thomas Binsfeld (ACSONE_)
 - Benjamin Willig (ACSONE_)
-- Jairo Llopis (Tecnativa_)
+- Jairo Llopis
 - Laurent Mignon (ACSONE_)
 - Lois Rilo (ForgeFlow_)
 - Dmitry Voronin
+- Michael Tietz (MT Software)
 
 .. _ACSONE: https://acsone.eu
 .. _Tecnativa: https://tecnativa.com

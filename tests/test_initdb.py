@@ -251,12 +251,10 @@ def test_create_cmd_cache(dbcache, tmpdir):
         odoo_cfg = tmpdir / "odoo.cfg"
         odoo_cfg.write(
             textwrap.dedent(
-                """\
-            [options]
-            addons_path = {}
-        """.format(
-                    ADDONS_PATH
-                )
+                f"""\
+                [options]
+                addons_path = {ADDONS_PATH}
+                """
             )
         )
         cmd = [
@@ -275,9 +273,9 @@ def test_create_cmd_cache(dbcache, tmpdir):
         try:
             subprocess.check_call(cmd)
             with click_odoo.OdooEnvironment(database=TEST_DBNAME_NEW) as env:
-                assert env["ir.module.module"].search(
-                    [("name", "=", "addon1")]
-                ), "module addon1 not present in new database"
+                assert env["ir.module.module"].search([("name", "=", "addon1")]), (
+                    "module addon1 not present in new database"
+                )
         finally:
             _dropdb(TEST_DBNAME_NEW)
 
